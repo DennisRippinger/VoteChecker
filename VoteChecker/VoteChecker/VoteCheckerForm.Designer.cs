@@ -169,7 +169,7 @@
             this.button_NextPackage.TabIndex = 0;
             this.button_NextPackage.Text = "Nächstes Paket";
             this.button_NextPackage.UseVisualStyleBackColor = true;
-            this.button_NextPackage.Click += new System.EventHandler(this.button_NextPackage_Click);
+            this.button_NextPackage.Click += new System.EventHandler(this.ButtonNextPackageClick);
             // 
             // groupBox_invalid
             // 

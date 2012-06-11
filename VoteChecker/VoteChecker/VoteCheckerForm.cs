@@ -1,25 +1,18 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
-using System.Linq;
-using System.Text;
 using System.IO;
-using MySql.Data.MySqlClient;
 using System.Windows.Forms;
-using System.Xml;
 using System.Xml.Serialization;
+using GenCode128;
+using MySql.Data.MySqlClient;
 
 namespace VoteChecker
 {
     public partial class VoteCheckerForm : Form
     {
-
-        private Configuration _configuration = null;
-        private MySqlConnection _sqlConnection = null;
-        private string _lastCode = string.Empty;
-
+        private readonly string _lastCode = string.Empty;
+        private Configuration _configuration;
+        private MySqlConnection _sqlConnection;
 
 
         public VoteCheckerForm()
@@ -28,11 +21,9 @@ namespace VoteChecker
             LoadConfiguration();
             SetUpConnection();
             WindowState = FormWindowState.Maximized;
-            FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
+            FormBorderStyle = FormBorderStyle.None;
             TopMost = true;
         }
-
-
 
 
         private void CheckForEnter(object sender, KeyPressEventArgs e)
@@ -45,21 +36,14 @@ namespace VoteChecker
 
         private void CheckLogic()
         {
-            if (_lastCode.Equals(textBox_barcode.Text))
-            {
-                label_attention.Visible = true;
-            }
-            else
-            {
-                label_attention.Visible = false;
-            }
+            label_attention.Visible = _lastCode.Equals(textBox_barcode.Text);
 
             _sqlConnection.Open();
-            var command = _sqlConnection.CreateCommand();
+            MySqlCommand command = _sqlConnection.CreateCommand();
             command.CommandText = "SELECT * FROM Barcodes WHERE Barcode = @barcode";
             command.Parameters.AddWithValue("@barcode", textBox_barcode.Text);
             command.Prepare();
-            var result = command.ExecuteReader();
+            MySqlDataReader result = command.ExecuteReader();
 
 
             // Get first value
@@ -69,15 +53,15 @@ namespace VoteChecker
 
 
                 // Paste database result in struct to avoid MySQL Connection Errors
-                var row = new DatabaseRow()
-                {
-                    Barcode = result[0].ToString(),
-                    Checked = Boolean.Parse(result[1].ToString()),
-                    Group = result[2].ToString(),
-                    Packet = int.Parse(result[3].ToString()),
-                    Ballot = int.Parse(result[4].ToString()),
-                    TimeStamp = result[5].ToString()
-                };
+                var row = new DatabaseRow
+                              {
+                                  Barcode = result[0].ToString(),
+                                  Checked = Boolean.Parse(result[1].ToString()),
+                                  Group = result[2].ToString(),
+                                  Packet = int.Parse(result[3].ToString()),
+                                  Ballot = int.Parse(result[4].ToString()),
+                                  TimeStamp = result[5].ToString()
+                              };
 
                 _sqlConnection.Close();
 
@@ -93,17 +77,17 @@ namespace VoteChecker
                     label_status.Text = "Valid";
                     BackColor = Color.Green;
                     SetBarcodeChecked(textBox_barcode.Text);
-                    pictureBox_barcode.Image = GenCode128.Code128Rendering.MakeBarcodeImage(textBox_barcode.Text, 1, true);
+                    pictureBox_barcode.Image = Code128Rendering.MakeBarcodeImage(textBox_barcode.Text, 1, true);
                 }
-                /*
+                    /*
                  * Already checked:
                  * Barcode has been checked in the past
                  */
                 else
                 {
                     label_status.Text = "Invalid";
-                    this.BackColor = Color.Red;
-                    pictureBox_barcode.Image = GenCode128.Code128Rendering.MakeBarcodeImage(textBox_barcode.Text, 1, true);
+                    BackColor = Color.Red;
+                    pictureBox_barcode.Image = Code128Rendering.MakeBarcodeImage(textBox_barcode.Text, 1, true);
                     textBox_InvalidGroup.Text = row.Group;
                     textBox_InvalidPacket.Text = row.Packet.ToString();
                     textBox_InvalidBallot.Text = row.Ballot.ToString();
@@ -112,7 +96,7 @@ namespace VoteChecker
                     groupBox_invalid.Visible = true;
                 }
             }
-            /* *
+                /* *
              * No value returned
              * In this case the barcode has been either faulty scanned
              * OR
@@ -122,13 +106,18 @@ namespace VoteChecker
             {
                 label_status.Text = "Unkown";
                 BackColor = Color.Yellow;
-                pictureBox_barcode.Image = GenCode128.Code128Rendering.MakeBarcodeImage(textBox_barcode.Text, 1, true);
+                pictureBox_barcode.Image = Code128Rendering.MakeBarcodeImage(textBox_barcode.Text, 1, true);
             }
             label_barcodeOutput.Text = textBox_barcode.Text;
 
-            var ballotCounter = int.Parse(textBox_ballot.Text);
+            int ballotCounter = int.Parse(textBox_ballot.Text);
             ballotCounter++;
             textBox_ballot.Text = ballotCounter.ToString();
+
+            if (ballotCounter == _configuration.Limit)
+            {
+                NextPackageDialog();
+            }
 
             textBox_barcode.Text = string.Empty;
             textBox_barcode.Focus();
@@ -139,8 +128,8 @@ namespace VoteChecker
         {
             try
             {
-                XmlSerializer serialiser = new XmlSerializer(typeof(Configuration));
-                _configuration = (Configuration)serialiser.Deserialize(File.OpenRead("Configuration.xml"));
+                var serialiser = new XmlSerializer(typeof (Configuration));
+                _configuration = (Configuration) serialiser.Deserialize(File.OpenRead("Configuration.xml"));
             }
             catch (Exception)
             {
@@ -155,8 +144,9 @@ namespace VoteChecker
         private void SetBarcodeChecked(string barcode)
         {
             _sqlConnection.Open();
-            var command = _sqlConnection.CreateCommand();
-            command.CommandText = "UPDATE Barcodes SET Checked = '1', Group_Number = @group, Packet = @packet, Item = @ballot WHERE Barcode = @barcode";
+            MySqlCommand command = _sqlConnection.CreateCommand();
+            command.CommandText =
+                "UPDATE Barcodes SET Checked = '1', Group_Number = @group, Packet = @packet, Item = @ballot WHERE Barcode = @barcode";
 
             command.Prepare();
             command.Parameters.AddWithValue("@group", textBox_group.Text);
@@ -172,9 +162,9 @@ namespace VoteChecker
         private void SetUpConnection()
         {
             string conString = "SERVER=" + _configuration.DatabaseIP + ";" +
-                        "DATABASE=Barcodes;" +
-                        "UID=" + _configuration.DatabaseUser +
-                        ";PASSWORD=" + _configuration.DatabasePW + ";";
+                               "DATABASE=Barcodes;" +
+                               "UID=" + _configuration.DatabaseUser +
+                               ";PASSWORD=" + _configuration.DatabasePW + ";";
 
             _sqlConnection = new MySqlConnection(conString);
             try
@@ -190,18 +180,21 @@ namespace VoteChecker
             _sqlConnection.Close();
         }
 
-        private void button_NextPackage_Click(object sender, EventArgs e)
+        private void ButtonNextPackageClick(object sender, EventArgs e)
         {
-            var answer = MessageBox.Show("Next Package?", "Package", MessageBoxButtons.YesNo);
+            NextPackageDialog();
+        }
 
-            if (answer.Equals(DialogResult.Yes))
-            {
-                var counter = int.Parse(textBox_packet.Text);
-                counter++;
-                textBox_packet.Text = counter.ToString();
-                textBox_barcode.Focus();
-            }
+        private void NextPackageDialog()
+        {
+            DialogResult answer = MessageBox.Show("Next Package?", "Package", MessageBoxButtons.YesNo);
 
+            if (!answer.Equals(DialogResult.Yes)) return;
+
+            int counter = int.Parse(textBox_packet.Text);
+            counter++;
+            textBox_packet.Text = counter.ToString();
+            textBox_barcode.Focus();
         }
     }
 }
