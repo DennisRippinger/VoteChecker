@@ -115,7 +115,7 @@
             this.textBox_ballot.Name = "textBox_ballot";
             this.textBox_ballot.Size = new System.Drawing.Size(95, 20);
             this.textBox_ballot.TabIndex = 6;
-            this.textBox_ballot.Text = "1";
+            this.textBox_ballot.Text = "0";
             // 
             // label4
             // 

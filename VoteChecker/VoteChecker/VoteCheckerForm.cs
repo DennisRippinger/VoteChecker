@@ -194,6 +194,7 @@ namespace VoteChecker
             int counter = int.Parse(textBox_packet.Text);
             counter++;
             textBox_packet.Text = counter.ToString();
+            textBox_ballot.Text = "0";
             textBox_barcode.Focus();
         }
     }
