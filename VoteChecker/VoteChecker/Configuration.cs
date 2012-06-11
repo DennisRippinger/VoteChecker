@@ -11,5 +11,6 @@ namespace VoteChecker
         public string DatabaseIP;
         public string DatabaseUser;
         public string DatabasePW;
+        public int Limit;
     }
 }
